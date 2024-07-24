@@ -1,0 +1,67 @@
+const { SlashCommandBuilder } = require('discord.js');
+const { musicPlayer } = require('../../utils/musicPlayer');
+const moment = require('moment');
+
+module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('seek')
+    .setDescription('Seek to a specific point in the current song')
+    .addStringOption((option) =>
+      option
+        .setName('time')
+        .setDescription('The time to seek to (e.g., 0:30, 1:15)')
+        .setRequired(true)
+    ),
+  async execute(interaction) {
+    const seekTime = interaction.options.getString('time');
+
+    // Check if the bot is in a voice channel
+    if (!interaction.guild.members.me.voice.channel) {
+      return interaction.reply({
+        content: 'I am not in a voice channel!',
+        ephemeral: true,
+      });
+    }
+
+    // Check if the user is in a voice channel
+    if (!interaction.member.voice.channel) {
+      return interaction.reply({
+        content: 'You need to be in a voice channel to use this command!',
+        ephemeral: true,
+      });
+    }
+
+    // Check if there is a song playing
+    if (!musicPlayer.isPlaying()) {
+      return interaction.reply({
+        content: 'There is no song playing currently!',
+        ephemeral: true,
+      });
+    }
+
+    // Convert the seek time to seconds
+    const seekTo = moment.duration(seekTime).asSeconds();
+
+    // Check if the seek time is valid
+    if (isNaN(seekTo) || seekTo < 0 || seekTo > musicPlayer.getCurrentSong().duration) {
+      return interaction.reply({
+        content: 'Invalid seek time!',
+        ephemeral: true,
+      });
+    }
+
+    // Pause the song
+    musicPlayer.pauseSong();
+
+    // Seek to the specified time
+    musicPlayer.seek(seekTo);
+
+    // Resume the song
+    musicPlayer.resumeSong();
+
+    await interaction.reply({
+      content: `Seeked to ${seekTime}!`,
+      ephemeral: true,
+    });
+  },
+};
